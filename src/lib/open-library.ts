@@ -14,6 +14,18 @@ interface OpenLibraryDoc {
   cover_i?: number;
 }
 
+interface OpenLibraryBookData {
+  title?: string;
+  subtitle?: string;
+  authors?: { name: string }[];
+  publishers?: { name: string }[];
+  publish_date?: string;
+  number_of_pages?: number;
+  cover?: { small?: string; medium?: string; large?: string };
+  subjects?: { name: string }[];
+  url?: string;
+}
+
 function mappaDoc(doc: OpenLibraryDoc): Libro {
   const isbnPuliti = (doc.isbn ?? []).map((i) => i.replace(/-/g, ""));
   const isbn13 = isbnPuliti.find((i) => i.length === 13);
@@ -49,7 +61,8 @@ function mappaDoc(doc: OpenLibraryDoc): Libro {
  */
 export async function cercaLibriOpenLibrary(
   query: string,
-  maxResults = 20
+  maxResults = 30,
+  timeoutMs = 6000
 ): Promise<Libro[]> {
   if (!query.trim()) return [];
 
@@ -60,7 +73,10 @@ export async function cercaLibriOpenLibrary(
   });
 
   try {
-    const res = await fetch(`${BASE_URL}?${params.toString()}`, { next: { revalidate: 3600 } });
+    const res = await fetch(`${BASE_URL}?${params.toString()}`, {
+      next: { revalidate: 3600 },
+      signal: AbortSignal.timeout(timeoutMs),
+    });
     if (!res.ok) return [];
     const data = (await res.json()) as { docs?: OpenLibraryDoc[] };
     return (data.docs ?? [])
@@ -69,5 +85,46 @@ export async function cercaLibriOpenLibrary(
   } catch (err) {
     console.error("Errore ricerca Open Library:", err);
     return [];
+  }
+}
+
+/**
+ * Cerca un libro per ISBN esatto usando l'endpoint dedicato di Open Library
+ * (molto più affidabile della ricerca generica "q=isbn:..." per un match preciso,
+ * specie per edizioni italiane meno diffuse che la ricerca a testo libero non trova).
+ */
+export async function trovaLibroPerISBNOpenLibrary(isbn: string): Promise<Libro | null> {
+  const isbnPulito = isbn.replace(/[^0-9Xx]/g, "");
+  if (!isbnPulito) return null;
+
+  try {
+    const res = await fetch(
+      `https://openlibrary.org/api/books?bibkeys=ISBN:${isbnPulito}&format=json&jscmd=data`,
+      { next: { revalidate: 3600 }, signal: AbortSignal.timeout(6000) }
+    );
+    if (!res.ok) return null;
+    const data = (await res.json()) as Record<string, OpenLibraryBookData>;
+    const libro = data[`ISBN:${isbnPulito}`];
+    if (!libro?.title) return null;
+
+    return {
+      id: `ol:isbn:${isbnPulito}`,
+      titolo: libro.title,
+      sottotitolo: libro.subtitle ?? null,
+      autori: (libro.authors ?? []).map((a) => a.name),
+      descrizione: null,
+      immagine_url: libro.cover?.medium ?? libro.cover?.large ?? libro.cover?.small ?? null,
+      isbn_13: isbnPulito.length === 13 ? isbnPulito : null,
+      isbn_10: isbnPulito.length === 10 ? isbnPulito : null,
+      editore: libro.publishers?.[0]?.name ?? null,
+      data_pubblicazione: libro.publish_date ?? null,
+      categorie: (libro.subjects ?? []).slice(0, 5).map((s) => s.name),
+      lingua: null,
+      pagine: libro.number_of_pages ?? null,
+      link_google_books: libro.url ?? `https://openlibrary.org/isbn/${isbnPulito}`,
+    };
+  } catch (err) {
+    console.error("Errore ricerca ISBN Open Library:", err);
+    return null;
   }
 }

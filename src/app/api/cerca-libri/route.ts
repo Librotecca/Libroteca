@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { cercaLibriCompleto } from "@/lib/catalogo";
+import { cercaLibriCompleto, cercaLibroPerISBN } from "@/lib/catalogo";
 
 export async function GET(request: NextRequest) {
   const q = request.nextUrl.searchParams.get("q") ?? "";
@@ -10,6 +10,18 @@ export async function GET(request: NextRequest) {
   }
 
   try {
+    if (q.toLowerCase().startsWith("isbn:")) {
+      const isbn = q.slice(5);
+      const libro = await cercaLibroPerISBN(isbn);
+      if (libro) {
+        return NextResponse.json({ risultati: [libro] });
+      }
+      // Ripiego finale: se l'ISBN esatto non è indicizzato da nessuna delle due fonti,
+      // prova comunque una ricerca a testo libero con lo stesso codice.
+      const risultati = await cercaLibriCompleto(isbn, { soloItaliano: false });
+      return NextResponse.json({ risultati });
+    }
+
     const risultati = await cercaLibriCompleto(q, { soloItaliano });
     return NextResponse.json({ risultati });
   } catch (err) {

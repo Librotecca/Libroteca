@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
 import ThemeScript from "@/components/ThemeScript";
+import RegistraServiceWorker from "@/components/RegistraServiceWorker";
+import BannerOffline from "@/components/BannerOffline";
 
 export const metadata: Metadata = {
   title: "Libroteca",
@@ -15,6 +17,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <ThemeScript />
       </head>
       <body className="min-h-full flex flex-col bg-background text-foreground">
+        <RegistraServiceWorker />
+        <BannerOffline />
         <Navbar />
         <main className="flex-1 w-full max-w-5xl mx-auto px-4 py-6 sm:px-6">{children}</main>
       </body>

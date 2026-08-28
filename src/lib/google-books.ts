@@ -50,32 +50,25 @@ function apiKeyParam(): string {
 }
 
 /**
- * Cerca libri su Google Books. Di default privilegia i risultati in italiano
- * (restrict di lingua "it"), ma senza escludere del tutto gli altri risultati
- * se la ricerca in italiano non trova nulla.
+ * Cerca libri su Google Books. La ricerca non è ristretta per lingua (per avere
+ * un catalogo il più ampio possibile): la priorità ai titoli in italiano viene
+ * data più avanti, ordinando i risultati uniti di tutte le fonti. Ha un limite
+ * di tempo (timeoutMs) per non far aspettare troppo chi cerca da rete lenta.
  */
 export async function cercaLibri(
   query: string,
-  { soloItaliano = true, maxResults = 20 }: { soloItaliano?: boolean; maxResults?: number } = {}
+  { maxResults = 30, timeoutMs = 6000 }: { maxResults?: number; timeoutMs?: number } = {}
 ): Promise<Libro[]> {
   if (!query.trim()) return [];
 
-  const langRestrict = soloItaliano ? "&langRestrict=it" : "";
-  const url = `${BASE_URL}?q=${encodeURIComponent(query)}${langRestrict}&maxResults=${maxResults}${apiKeyParam()}`;
+  const url = `${BASE_URL}?q=${encodeURIComponent(query)}&maxResults=${maxResults}${apiKeyParam()}`;
 
-  const res = await fetch(url, { next: { revalidate: 3600 } });
+  const res = await fetch(url, { next: { revalidate: 3600 }, signal: AbortSignal.timeout(timeoutMs) });
   if (!res.ok) {
     throw new Error(`Google Books API ha risposto ${res.status}`);
   }
   const data = (await res.json()) as { items?: GoogleBooksVolume[] };
-  const risultati = (data.items ?? []).map(mappaVolume);
-
-  // Se la ricerca ristretta all'italiano non trova nulla, riprova senza restrizione.
-  if (risultati.length === 0 && soloItaliano) {
-    return cercaLibri(query, { soloItaliano: false, maxResults });
-  }
-
-  return risultati;
+  return (data.items ?? []).map(mappaVolume);
 }
 
 export async function ottieniLibroPerId(id: string): Promise<Libro | null> {
@@ -96,6 +89,6 @@ export async function trovaLibroPerTitoloAutore(
   autore?: string
 ): Promise<Libro | null> {
   const query = autore ? `intitle:${titolo} inauthor:${autore}` : `intitle:${titolo}`;
-  const risultati = await cercaLibri(query, { soloItaliano: false, maxResults: 3 });
+  const risultati = await cercaLibri(query, { maxResults: 3 });
   return risultati[0] ?? null;
 }

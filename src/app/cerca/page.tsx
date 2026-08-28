@@ -40,9 +40,12 @@ export default function CercaPage() {
   }
 
   function codiceRilevato(codice: string) {
+    // Ripulisce il codice letto dalla fotocamera da eventuali spazi/trattini,
+    // così la ricerca ISBN riceve sempre solo cifre (e l'eventuale "X" finale).
+    const codicePulito = codice.replace(/[^0-9Xx]/g, "");
     setScannerAperto(false);
-    setQuery(codice);
-    eseguiRicerca(`isbn:${codice}`);
+    setQuery(codicePulito);
+    eseguiRicerca(`isbn:${codicePulito}`);
   }
 
   async function aggiungi(libro: Libro, stato: StatoLettura) {
