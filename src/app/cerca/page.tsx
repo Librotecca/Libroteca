@@ -76,19 +76,19 @@ export default function CercaPage() {
         </p>
       </div>
 
-      <div className="flex gap-2">
-        <form onSubmit={cerca} className="flex gap-2 flex-1">
+      <div className="flex gap-2 min-w-0">
+        <form onSubmit={cerca} className="flex gap-2 flex-1 min-w-0">
           <input
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Titolo, autore..."
-            className="flex-1 bg-surface border border-border rounded-lg px-4 py-2.5 outline-none focus:border-accent transition-colors"
+            className="flex-1 min-w-0 bg-surface border border-border rounded-lg px-4 py-2.5 outline-none focus:border-accent transition-colors"
           />
           <button
             type="submit"
             disabled={caricamento}
-            className="bg-accent hover:bg-accent-strong text-accent-contrast font-medium rounded-lg px-5 py-2.5 transition-colors disabled:opacity-60"
+            className="shrink-0 bg-accent hover:bg-accent-strong text-accent-contrast font-medium rounded-lg px-5 py-2.5 transition-colors disabled:opacity-60"
           >
             {caricamento ? "..." : "Cerca"}
           </button>
