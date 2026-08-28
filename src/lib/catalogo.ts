@@ -18,24 +18,32 @@ function italianiPrima(libri: Libro[]): Libro[] {
 
 /**
  * Cerca libri unendo due cataloghi: Google Books (fonte principale, dati più
- * ricchi) e Open Library (fonte secondaria, gratuita, per coprire titoli che
- * Google Books non ha — specie alcune edizioni italiane meno diffuse).
- * I duplicati (stesso titolo+autore) vengono rimossi, dando priorità a Google Books.
+ * ricchi e in genere molto più veloce) e Open Library (fonte secondaria,
+ * gratuita, per coprire titoli che Google Books non ha — specie alcune
+ * edizioni italiane meno diffuse). I duplicati (stesso titolo+autore) vengono
+ * rimossi, dando priorità a Google Books.
  *
- * Le due fonti vengono interrogate in parallelo e senza restrizione di lingua
- * (per avere un catalogo il più ampio possibile, comprese le edizioni italiane
- * meno comuni); i risultati in italiano vengono poi portati in cima alla lista.
- * Ogni fonte ha un limite di tempo, così una fonte lenta non rallenta tutta
- * la ricerca: se scade il tempo, si procede solo con i risultati dell'altra.
+ * Per la velocità: Open Library viene interrogata solo se Google Books da
+ * solo non basta (poche corrispondenze). Nella maggior parte delle ricerche
+ * (titoli noti) Google trova già abbastanza risultati, quindi la ricerca resta
+ * una sola chiamata di rete invece di due sempre in parallelo — Open Library
+ * è infatti spesso molto più lenta di Google Books, ed era la causa principale
+ * della lentezza percepita premendo "Cerca". Quando serve comunque (titoli
+ * meno comuni), ha un limite di tempo più stretto così non trascina troppo
+ * a lungo l'attesa.
  */
 export async function cercaLibriCompleto(
   query: string,
   { soloItaliano = true, maxResults = 30 }: { soloItaliano?: boolean; maxResults?: number } = {}
 ): Promise<Libro[]> {
-  const [google, openLibrary] = await Promise.all([
-    cercaLibriGoogle(query, { maxResults: 40 }).catch(() => [] as Libro[]),
-    cercaLibriOpenLibrary(query, 40).catch(() => [] as Libro[]),
-  ]);
+  const google = await cercaLibriGoogle(query, { maxResults: 30, timeoutMs: 5000 }).catch(
+    () => [] as Libro[]
+  );
+
+  const bastaGoogle = google.length >= 8;
+  const openLibrary = bastaGoogle
+    ? []
+    : await cercaLibriOpenLibrary(query, 24, 3500).catch(() => [] as Libro[]);
 
   const visti = new Set(google.map(chiaveDedupe));
   const extra = openLibrary.filter((l) => !visti.has(chiaveDedupe(l)));
