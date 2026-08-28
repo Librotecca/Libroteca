@@ -18,18 +18,16 @@ export default async function LibreriaFamiliarePage({
   const supabase = await createClient();
 
   // La policy RLS "voci_libreria: lettura famiglia" permette di leggere queste
-  // righe solo se userId condivide effettivamente una famiglia con l'utente corrente.
-  const { data: voci, error } = await supabase
-    .from("voci_libreria")
-    .select("*, libro:libri(*)")
-    .eq("user_id", userId)
-    .order("updated_at", { ascending: false });
-
-  const { data: profilo } = await supabase
-    .from("profili")
-    .select("*")
-    .eq("user_id", userId)
-    .maybeSingle();
+  // righe solo se userId condivide effettivamente una famiglia con l'utente
+  // corrente. Le due query sono indipendenti: eseguite in parallelo.
+  const [{ data: voci, error }, { data: profilo }] = await Promise.all([
+    supabase
+      .from("voci_libreria")
+      .select("*, libro:libri(*)")
+      .eq("user_id", userId)
+      .order("updated_at", { ascending: false }),
+    supabase.from("profili").select("*").eq("user_id", userId).maybeSingle(),
+  ]);
 
   if (error || !profilo) notFound();
 

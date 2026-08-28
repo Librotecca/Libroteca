@@ -18,17 +18,16 @@ export default async function FamigliaPage() {
   let membri: MembroFamiglia[] = [];
 
   if (propriaRiga) {
-    const { data: famigliaData } = await supabase
-      .from("famiglie")
-      .select("*")
-      .eq("id", propriaRiga.famiglia_id)
-      .single();
+    // Nessuna delle due dipende dall'altra: eseguite in parallelo invece che
+    // in sequenza per dimezzare il tempo di attesa della pagina.
+    const [{ data: famigliaData }, { data: membriGrezzi }] = await Promise.all([
+      supabase.from("famiglie").select("*").eq("id", propriaRiga.famiglia_id).single(),
+      supabase
+        .from("membri_famiglia")
+        .select("*, profilo:profili(*)")
+        .eq("famiglia_id", propriaRiga.famiglia_id),
+    ]);
     famiglia = famigliaData as Famiglia;
-
-    const { data: membriGrezzi } = await supabase
-      .from("membri_famiglia")
-      .select("*, profilo:profili(*)")
-      .eq("famiglia_id", propriaRiga.famiglia_id);
     membri = (membriGrezzi ?? []) as unknown as MembroFamiglia[];
   }
 
