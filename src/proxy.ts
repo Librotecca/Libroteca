@@ -43,6 +43,9 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    // manifest.webmanifest e sw.js devono restare raggiungibili anche da chi
+    // non ha ancora effettuato l'accesso (es. il browser che valuta se può
+    // proporre "Aggiungi alla schermata Home" dalla pagina di login).
+    "/((?!_next/static|_next/image|favicon.ico|sw.js|manifest.webmanifest|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };

@@ -1,45 +1,45 @@
 @import "tailwindcss";
 
-/* Tema chiaro (default) */
+/* Tema chiaro (default). Palette allineata al logo: viola profondo, crema e verde. */
 :root {
-  --background: #faf7f2;
+  --background: #faf5ee;
   --surface: #ffffff;
-  --surface-2: #f0ebe3;
+  --surface-2: #f1e7db;
   --foreground: #241f1a;
   --muted: #756a5e;
-  --accent: #b8752f;
-  --accent-strong: #96602a;
+  --accent: #7a4380;
+  --accent-strong: #55295c;
   --accent-contrast: #ffffff;
-  --border: #e2d9cc;
+  --border: #e4d6c8;
   --danger: #c1443a;
 }
 
 /* Tema scuro: applicato se l'utente lo sceglie esplicitamente... */
 :root[data-theme="dark"] {
-  --background: #14110f;
-  --surface: #1e1a17;
-  --surface-2: #2a2420;
+  --background: #170f1a;
+  --surface: #221527;
+  --surface-2: #2d1c33;
   --foreground: #f2ebe3;
-  --muted: #a89a8c;
-  --accent: #d99a4e;
-  --accent-strong: #e8b06a;
-  --accent-contrast: #14110f;
-  --border: #3a322c;
+  --muted: #b3a3ac;
+  --accent: #c895d1;
+  --accent-strong: #dbb3e2;
+  --accent-contrast: #1f1023;
+  --border: #3d2a44;
   --danger: #e2685c;
 }
 
 /* ...oppure di default se il sistema è impostato su scuro e l'utente non ha scelto "chiaro". */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --background: #14110f;
-    --surface: #1e1a17;
-    --surface-2: #2a2420;
+    --background: #170f1a;
+    --surface: #221527;
+    --surface-2: #2d1c33;
     --foreground: #f2ebe3;
-    --muted: #a89a8c;
-    --accent: #d99a4e;
-    --accent-strong: #e8b06a;
-    --accent-contrast: #14110f;
-    --border: #3a322c;
+    --muted: #b3a3ac;
+    --accent: #c895d1;
+    --accent-strong: #dbb3e2;
+    --accent-contrast: #1f1023;
+    --border: #3d2a44;
     --danger: #e2685c;
   }
 }
