@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import BookCard from "@/components/BookCard";
 import type { Consiglio, StatoLettura } from "@/types";
 
+type Voto = "mi_piace" | "non_mi_piace";
+
 export default function ConsigliPage() {
   const [consigli, setConsigli] = useState<Consiglio[]>([]);
   const [messaggio, setMessaggio] = useState<string | null>(null);
@@ -11,6 +13,7 @@ export default function ConsigliPage() {
   const [caricamento, setCaricamento] = useState(true);
   const [generatedAt, setGeneratedAt] = useState<string | null>(null);
   const [aggiunti, setAggiunti] = useState<Record<string, boolean>>({});
+  const [voti, setVoti] = useState<Record<string, Voto>>({});
 
   async function carica(rigenera = false) {
     try {
@@ -52,6 +55,19 @@ export default function ConsigliPage() {
     }
   }
 
+  async function vota(consiglio: Consiglio, voto: Voto) {
+    setVoti((prev) => ({ ...prev, [consiglio.titolo]: voto }));
+    await fetch("/api/consigli/feedback", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ titolo: consiglio.titolo, autore: consiglio.autore, voto }),
+    });
+    if (voto === "non_mi_piace") {
+      // Rimuovi subito dalla vista: non verrà più riproposto nelle prossime generazioni.
+      setConsigli((prev) => prev.filter((c) => c.titolo !== consiglio.titolo));
+    }
+  }
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
@@ -83,31 +99,65 @@ export default function ConsigliPage() {
       {!caricamento && messaggio && <p className="text-muted text-sm">{messaggio}</p>}
 
       <div className="flex flex-col gap-3">
-        {consigli.map((c) => (
-          <div key={c.titolo} className="flex flex-col gap-2">
-            {c.libro ? (
-              <BookCard libro={c.libro}>
-                <p className="text-xs text-accent-strong italic mb-2">&ldquo;{c.motivo}&rdquo;</p>
-                {aggiunti[c.titolo] ? (
-                  <span className="text-sm text-accent-strong">✓ Aggiunto a &ldquo;Da leggere&rdquo;</span>
-                ) : (
-                  <button
-                    onClick={() => aggiungiADaLeggere(c)}
-                    className="text-xs px-2.5 py-1 rounded-full bg-surface-2 hover:bg-border transition-colors"
-                  >
-                    + Da leggere
-                  </button>
-                )}
-              </BookCard>
-            ) : (
-              <div className="bg-surface border border-border rounded-lg p-3">
-                <h3 className="font-medium">{c.titolo}</h3>
-                <p className="text-sm text-muted">{c.autore}</p>
-                <p className="text-xs text-accent-strong italic mt-1">&ldquo;{c.motivo}&rdquo;</p>
-              </div>
-            )}
-          </div>
-        ))}
+        {consigli.map((c) => {
+          const voto = voti[c.titolo];
+          const bottoniVoto = (
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => vota(c, "mi_piace")}
+                title="Mi piace"
+                className={`text-sm px-2 py-1 rounded-full transition-colors ${
+                  voto === "mi_piace" ? "bg-accent/20" : "hover:bg-surface-2"
+                }`}
+              >
+                👍
+              </button>
+              <button
+                onClick={() => vota(c, "non_mi_piace")}
+                title="Non mi interessa"
+                className="text-sm px-2 py-1 rounded-full hover:bg-surface-2 transition-colors"
+              >
+                👎
+              </button>
+            </div>
+          );
+
+          return (
+            <div key={c.titolo} className="flex flex-col gap-2">
+              {c.libro ? (
+                <BookCard libro={c.libro}>
+                  <p className="text-xs text-accent-strong italic mb-2">&ldquo;{c.motivo}&rdquo;</p>
+                  <div className="flex items-center justify-between gap-2">
+                    {aggiunti[c.titolo] ? (
+                      <span className="text-sm text-accent-strong">
+                        ✓ Aggiunto a &ldquo;Da leggere&rdquo;
+                      </span>
+                    ) : (
+                      <button
+                        onClick={() => aggiungiADaLeggere(c)}
+                        className="text-xs px-2.5 py-1 rounded-full bg-surface-2 hover:bg-border transition-colors"
+                      >
+                        + Da leggere
+                      </button>
+                    )}
+                    {bottoniVoto}
+                  </div>
+                </BookCard>
+              ) : (
+                <div className="bg-surface border border-border rounded-lg p-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <h3 className="font-medium">{c.titolo}</h3>
+                      <p className="text-sm text-muted">{c.autore}</p>
+                    </div>
+                    {bottoniVoto}
+                  </div>
+                  <p className="text-xs text-accent-strong italic mt-1">&ldquo;{c.motivo}&rdquo;</p>
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );

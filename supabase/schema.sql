@@ -235,3 +235,26 @@ create policy "voci_libreria: lettura famiglia"
   on public.voci_libreria for select
   to authenticated
   using (public.stessa_famiglia(user_id));
+
+-- ============================================================
+-- "consigli_feedback": 👍/👎 dell'utente sui singoli consigli AI ricevuti.
+-- Usato per non riproporre più i titoli scartati nelle generazioni future.
+-- ============================================================
+create table if not exists public.consigli_feedback (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  titolo text not null,
+  autore text,
+  voto text not null check (voto in ('mi_piace', 'non_mi_piace')),
+  created_at timestamptz not null default now(),
+  unique (user_id, titolo)
+);
+
+alter table public.consigli_feedback enable row level security;
+
+drop policy if exists "consigli_feedback: solo proprie righe" on public.consigli_feedback;
+create policy "consigli_feedback: solo proprie righe"
+  on public.consigli_feedback for all
+  to authenticated
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);

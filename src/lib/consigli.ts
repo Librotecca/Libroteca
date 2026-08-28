@@ -4,7 +4,16 @@ import { trovaLibroCompleto } from "@/lib/catalogo";
 
 const MODELLO = process.env.ANTHROPIC_MODEL ?? "claude-sonnet-4-5";
 
-function buildPrompt(letti: VoceLibreria[], abbandonati: VoceLibreria[]): string {
+interface TitoloNonGradito {
+  titolo: string;
+  autore: string | null;
+}
+
+function buildPrompt(
+  letti: VoceLibreria[],
+  abbandonati: VoceLibreria[],
+  nonGraditi: TitoloNonGradito[]
+): string {
   const righeLetti = letti
     .map((v) => {
       const l = v.libro;
@@ -26,6 +35,10 @@ function buildPrompt(letti: VoceLibreria[], abbandonati: VoceLibreria[]): string
     .filter(Boolean)
     .join("\n");
 
+  const righeNonGraditi = nonGraditi
+    .map((n) => `- "${n.titolo}"${n.autore ? ` di ${n.autore}` : ""}`)
+    .join("\n");
+
   return `Sei un bibliotecario esperto di letteratura italiana e internazionale. Un lettore italiano ti mostra la sua libreria personale.
 
 LIBRI LETTI (con eventuale voto personale da 1 a 5 e note):
@@ -34,7 +47,10 @@ ${righeLetti || "(nessuno)"}
 LIBRI ABBANDONATI (non finiti perché non piaciuti):
 ${righeAbbandonati || "(nessuno)"}
 
-Analizza i gusti di questo lettore: generi preferiti, temi ricorrenti, stile di scrittura apprezzato, cosa invece lo annoia (guarda i libri abbandonati e i voti bassi). Poi consiglia 8 libri NUOVI che non sono già nell'elenco sopra, che potrebbero piacergli. Dai priorità a libri disponibili in lingua italiana (originali italiani o tradotti in italiano), ma includi anche qualche titolo internazionale rilevante se pertinente.
+TITOLI GIÀ SUGGERITI E SCARTATI DAL LETTORE (non riproporli mai):
+${righeNonGraditi || "(nessuno)"}
+
+Analizza i gusti di questo lettore: generi preferiti, temi ricorrenti, stile di scrittura apprezzato, cosa invece lo annoia (guarda i libri abbandonati, i voti bassi e i titoli scartati). Poi consiglia 8 libri NUOVI che non sono già in nessuno degli elenchi sopra, che potrebbero piacergli. Dai priorità a libri disponibili in lingua italiana (originali italiani o tradotti in italiano), ma includi anche qualche titolo internazionale rilevante se pertinente.
 
 Rispondi SOLO con un array JSON valido (nessun testo prima o dopo), con questo formato esatto:
 [
@@ -49,7 +65,8 @@ Rispondi SOLO con un array JSON valido (nessun testo prima o dopo), con questo f
  */
 export async function generaConsigli(
   letti: VoceLibreria[],
-  abbandonati: VoceLibreria[]
+  abbandonati: VoceLibreria[],
+  nonGraditi: TitoloNonGradito[] = []
 ): Promise<Consiglio[]> {
   if (letti.length === 0) {
     return [];
@@ -66,7 +83,7 @@ export async function generaConsigli(
   const messaggio = await anthropic.messages.create({
     model: MODELLO,
     max_tokens: 2000,
-    messages: [{ role: "user", content: buildPrompt(letti, abbandonati) }],
+    messages: [{ role: "user", content: buildPrompt(letti, abbandonati, nonGraditi) }],
   });
 
   const testo = messaggio.content
@@ -83,12 +100,13 @@ export async function generaConsigli(
     throw new Error("Risposta AI non valida, riprova.");
   }
 
-  const titoliGiaLetti = new Set(
-    [...letti, ...abbandonati].map((v) => v.libro?.titolo?.toLowerCase().trim())
-  );
+  const titoliDaEscludere = new Set([
+    ...[...letti, ...abbandonati].map((v) => v.libro?.titolo?.toLowerCase().trim()),
+    ...nonGraditi.map((n) => n.titolo.toLowerCase().trim()),
+  ]);
 
   const consigliFiltrati = grezzi.filter(
-    (c) => !titoliGiaLetti.has(c.titolo?.toLowerCase().trim())
+    (c) => !titoliDaEscludere.has(c.titolo?.toLowerCase().trim())
   );
 
   // Arricchisci ogni consiglio con i dati reali di Google Books (copertina, descrizione)

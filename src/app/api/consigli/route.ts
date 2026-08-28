@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { generaConsigli } from "@/lib/consigli";
-import type { VoceLibreria } from "@/types";
+import type { Consiglio, VoceLibreria } from "@/types";
 
 async function caricaVoci(
   supabase: Awaited<ReturnType<typeof createClient>>,
@@ -16,6 +16,21 @@ async function caricaVoci(
 
   if (error) throw error;
   return (data ?? []) as unknown as VoceLibreria[];
+}
+
+async function caricaScartati(supabase: Awaited<ReturnType<typeof createClient>>, userId: string) {
+  const { data } = await supabase
+    .from("consigli_feedback")
+    .select("titolo, autore")
+    .eq("user_id", userId)
+    .eq("voto", "non_mi_piace");
+
+  return (data ?? []) as { titolo: string; autore: string | null }[];
+}
+
+function escludiScartati(consigli: Consiglio[], scartati: { titolo: string }[]): Consiglio[] {
+  const titoliScartati = new Set(scartati.map((s) => s.titolo.toLowerCase().trim()));
+  return consigli.filter((c) => !titoliScartati.has(c.titolo.toLowerCase().trim()));
 }
 
 /**
@@ -41,14 +56,19 @@ export async function GET(request: NextRequest) {
       .maybeSingle();
 
     if (cache) {
-      return NextResponse.json({ consigli: cache.consigli, generated_at: cache.generated_at });
+      const scartati = await caricaScartati(supabase, user.id);
+      return NextResponse.json({
+        consigli: escludiScartati(cache.consigli as Consiglio[], scartati),
+        generated_at: cache.generated_at,
+      });
     }
   }
 
   try {
-    const [letti, abbandonati] = await Promise.all([
+    const [letti, abbandonati, scartati] = await Promise.all([
       caricaVoci(supabase, user.id, "letto"),
       caricaVoci(supabase, user.id, "abbandonato"),
+      caricaScartati(supabase, user.id),
     ]);
 
     if (letti.length === 0) {
@@ -58,7 +78,7 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    const consigli = await generaConsigli(letti, abbandonati);
+    const consigli = await generaConsigli(letti, abbandonati, scartati);
     const generatedAt = new Date().toISOString();
 
     await supabase
