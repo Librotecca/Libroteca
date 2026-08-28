@@ -26,6 +26,9 @@ export default async function Navbar() {
             <Link href="/consigli" className="px-2 py-1 rounded hover:bg-surface-2 transition-colors">
               Consigli
             </Link>
+            <Link href="/famiglia" className="px-2 py-1 rounded hover:bg-surface-2 transition-colors">
+              Famiglia
+            </Link>
             <LogoutButton />
           </nav>
         )}

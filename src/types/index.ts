@@ -46,3 +46,23 @@ export const ETICHETTE_STATO: Record<StatoLettura, string> = {
   letto: "Letto",
   abbandonato: "Abbandonato",
 };
+
+export interface Profilo {
+  user_id: string;
+  email: string | null;
+  nome_visualizzato: string | null;
+}
+
+export interface Famiglia {
+  id: string;
+  nome: string;
+  codice_invito: string;
+  creato_da: string;
+}
+
+export interface MembroFamiglia {
+  user_id: string;
+  famiglia_id: string;
+  ruolo: "creatore" | "membro";
+  profilo?: Profilo;
+}

@@ -9,12 +9,15 @@ Stessa impostazione tecnica di Nightwatch: **Next.js** (App Router) + **Supabase
 
 ## Funzionalità
 
-- Ricerca libri nel catalogo Google Books, con priorità ai risultati in lingua italiana
+- Ricerca libri unendo due cataloghi: **Google Books** (principale) e **Open Library** (secondario,
+  senza bisogno di chiave), con priorità ai risultati in lingua italiana e deduplica automatica
 - Libreria personale organizzata per stato: **Da leggere**, **In lettura**, **Letto**, **Abbandonato**
 - Per ogni libro: valutazione personale (1-5 stelle), note, date di inizio/fine lettura
 - Consigli di lettura generati da Claude in base ai libri letti (e a quelli abbandonati, per capire
   cosa evitare), arricchiti con copertina e descrizione reale dal catalogo Google Books
 - Login a scelta: email + password, oppure link magico via email (nessuna password) — gestiti da Supabase Auth
+- **Famiglia**: crea un gruppo o unisciti con un link/codice di invito; tutti i membri vedono le
+  librerie (stato, voti e note) di tutti gli altri
 - Tema scuro, mobile-friendly
 
 ## 1. Crea gli account (gratuiti)

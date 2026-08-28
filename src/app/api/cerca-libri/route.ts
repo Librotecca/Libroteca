@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { cercaLibri } from "@/lib/google-books";
+import { cercaLibriCompleto } from "@/lib/catalogo";
 
 export async function GET(request: NextRequest) {
   const q = request.nextUrl.searchParams.get("q") ?? "";
@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const risultati = await cercaLibri(q, { soloItaliano });
+    const risultati = await cercaLibriCompleto(q, { soloItaliano });
     return NextResponse.json({ risultati });
   } catch (err) {
     console.error("Errore ricerca Google Books:", err);

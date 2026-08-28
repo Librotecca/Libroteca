@@ -1,6 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { Consiglio, VoceLibreria } from "@/types";
-import { trovaLibroPerTitoloAutore } from "@/lib/google-books";
+import { trovaLibroCompleto } from "@/lib/catalogo";
 
 const MODELLO = process.env.ANTHROPIC_MODEL ?? "claude-sonnet-4-5";
 
@@ -96,7 +96,7 @@ export async function generaConsigli(
     consigliFiltrati.map(async (c) => {
       let libro = null;
       try {
-        libro = await trovaLibroPerTitoloAutore(c.titolo, c.autore);
+        libro = await trovaLibroCompleto(c.titolo, c.autore);
       } catch {
         libro = null;
       }
