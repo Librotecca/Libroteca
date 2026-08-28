@@ -48,6 +48,13 @@ export default function CercaPage() {
     eseguiRicerca(`isbn:${codicePulito}`);
   }
 
+  function copertinaRilevata(titolo: string, autore: string | null) {
+    const testo = autore ? `${titolo} ${autore}` : titolo;
+    setScannerAperto(false);
+    setQuery(testo);
+    eseguiRicerca(testo);
+  }
+
   async function aggiungi(libro: Libro, stato: StatoLettura) {
     const res = await fetch("/api/libri", {
       method: "POST",
@@ -89,7 +96,7 @@ export default function CercaPage() {
         <button
           type="button"
           onClick={() => setScannerAperto((v) => !v)}
-          title="Scansiona codice a barre ISBN"
+          title="Cerca con la fotocamera (codice a barre o copertina)"
           className="shrink-0 bg-surface-2 hover:bg-border rounded-lg px-4 py-2.5 transition-colors"
         >
           📷
@@ -97,7 +104,11 @@ export default function CercaPage() {
       </div>
 
       {scannerAperto && (
-        <ScannerISBN onRilevato={codiceRilevato} onChiudi={() => setScannerAperto(false)} />
+        <ScannerISBN
+          onRilevato={codiceRilevato}
+          onCopertinaRilevata={copertinaRilevata}
+          onChiudi={() => setScannerAperto(false)}
+        />
       )}
 
       {errore && <p className="text-danger text-sm">{errore}</p>}
