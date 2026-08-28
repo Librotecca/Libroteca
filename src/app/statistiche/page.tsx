@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, idUtenteCorrente } from "@/lib/supabase/server";
 import HeroBand from "@/components/HeroBand";
 import ObiettivoAnnuale from "@/components/ObiettivoAnnuale";
 import type { VoceLibreria } from "@/types";
@@ -63,18 +63,16 @@ function BarraLista({
 }
 
 export default async function StatistichePage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  const userId = await idUtenteCorrente();
+  if (!userId) redirect("/login");
 
+  const supabase = await createClient();
   const [{ data, error }, { data: profilo }] = await Promise.all([
-    supabase.from("voci_libreria").select("*, libro:libri(*)").eq("user_id", user.id),
+    supabase.from("voci_libreria").select("*, libro:libri(*)").eq("user_id", userId),
     supabase
       .from("profili")
       .select("obiettivo_lettura_annuale")
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .maybeSingle(),
   ]);
 

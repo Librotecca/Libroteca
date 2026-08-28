@@ -1,6 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, idUtenteCorrente } from "@/lib/supabase/server";
 import BookCard from "@/components/BookCard";
 import ShelfBadge from "@/components/ShelfBadge";
 import StarRating from "@/components/StarRating";
@@ -12,11 +12,10 @@ export default async function LibreriaFamiliarePage({
   params: Promise<{ userId: string }>;
 }) {
   const { userId } = await params;
+  const propriaId = await idUtenteCorrente();
+  if (!propriaId) redirect("/login");
+
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
 
   // La policy RLS "voci_libreria: lettura famiglia" permette di leggere queste
   // righe solo se userId condivide effettivamente una famiglia con l'utente corrente.

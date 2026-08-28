@@ -1,15 +1,16 @@
 import Link from "next/link";
 import Image from "next/image";
-import { createClient } from "@/lib/supabase/server";
+import { idUtenteCorrente } from "@/lib/supabase/server";
 import LogoutButton from "@/components/LogoutButton";
 import ThemeToggle from "@/components/ThemeToggle";
 import BottomNav from "@/components/BottomNav";
 
 export default async function Navbar() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // Solo lettura dell'header impostato da proxy.ts: niente più chiamata di
+  // rete a supabase.auth.getUser() a ogni cambio pagina (la Navbar è nel
+  // layout condiviso, quindi si rieseguiva ad ogni navigazione).
+  const userId = await idUtenteCorrente();
+  const user = Boolean(userId);
 
   return (
     <>

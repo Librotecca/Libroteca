@@ -38,6 +38,18 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  // Passa l'id utente già verificato qui sopra alle Server Component (Navbar,
+  // pagine protette) tramite un header di richiesta: evita che ognuna debba
+  // richiamare di nuovo supabase.auth.getUser() (una richiesta di rete verso
+  // Supabase) — prima capitava fino a 3 volte per ogni cambio pagina, la causa
+  // principale della navigazione percepita come lenta. Le eventuali cookie di
+  // refresh sessione impostate sopra vengono preservate.
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-user-id", user?.id ?? "");
+  const cookieEsistenti = response.cookies.getAll();
+  response = NextResponse.next({ request: { headers: requestHeaders } });
+  cookieEsistenti.forEach((cookie) => response.cookies.set(cookie));
+
   return response;
 }
 

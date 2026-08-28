@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { idUtenteCorrente } from "@/lib/supabase/server";
 import UnisciteClient from "./UnisciteClient";
 
 export default async function UnisciteAllaFamigliaPage({
@@ -8,11 +8,8 @@ export default async function UnisciteAllaFamigliaPage({
   params: Promise<{ codice: string }>;
 }) {
   const { codice } = await params;
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  const userId = await idUtenteCorrente();
+  if (!userId) redirect("/login");
 
   return <UnisciteClient codice={codice} />;
 }

@@ -1,14 +1,17 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 
+// Icone personalizzate coerenti con lo stile del logo (public/nav-icons/).
+// "Consigli" non ne ha una dedicata: resta l'emoji ✨.
 const VOCI = [
-  { href: "/libreria", etichetta: "Libreria", icona: "📚" },
-  { href: "/cerca", etichetta: "Cerca", icona: "🔍" },
+  { href: "/libreria", etichetta: "Libreria", icona: "/nav-icons/libreria.png" },
+  { href: "/cerca", etichetta: "Cerca", icona: "/nav-icons/cerca.png" },
   { href: "/consigli", etichetta: "Consigli", icona: "✨" },
-  { href: "/statistiche", etichetta: "Statistiche", icona: "📊" },
-  { href: "/famiglia", etichetta: "Famiglia", icona: "👪" },
+  { href: "/statistiche", etichetta: "Statistiche", icona: "/nav-icons/statistiche.png" },
+  { href: "/famiglia", etichetta: "Famiglia", icona: "/nav-icons/famiglia.png" },
 ];
 
 // Barra di navigazione fissa in basso, visibile solo su mobile: più comoda da
@@ -32,7 +35,17 @@ export default function BottomNav() {
               attivo ? "text-accent-strong" : "text-muted"
             }`}
           >
-            <span className="text-lg leading-none">{voce.icona}</span>
+            {voce.icona.startsWith("/") ? (
+              <Image
+                src={voce.icona}
+                alt=""
+                width={22}
+                height={22}
+                className={`rounded-[6px] transition-opacity ${attivo ? "" : "opacity-70"}`}
+              />
+            ) : (
+              <span className="text-lg leading-none">{voce.icona}</span>
+            )}
             {voce.etichetta}
           </Link>
         );
