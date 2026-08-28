@@ -4,14 +4,22 @@ import { useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import StarRating from "@/components/StarRating";
+import CopertinaPlaceholder from "@/components/CopertinaPlaceholder";
+import BarraProgresso from "@/components/BarraProgresso";
 import { ETICHETTE_STATO, type StatoLettura, type VoceLibreria } from "@/types";
 
 export default function DettaglioClient({ voce: iniziale }: { voce: VoceLibreria }) {
   const router = useRouter();
   const [voce, setVoce] = useState(iniziale);
   const [note, setNote] = useState(iniziale.note ?? "");
+  const [paginaCorrente, setPaginaCorrente] = useState(
+    iniziale.pagina_corrente !== null ? String(iniziale.pagina_corrente) : ""
+  );
   const [salvando, setSalvando] = useState(false);
   const libro = voce.libro!;
+
+  const percentoLetto =
+    libro.pagine && voce.pagina_corrente ? (voce.pagina_corrente / libro.pagine) * 100 : null;
 
   async function aggiorna(campi: Partial<VoceLibreria>) {
     setSalvando(true);
@@ -47,11 +55,13 @@ export default function DettaglioClient({ voce: iniziale }: { voce: VoceLibreria
               unoptimized
             />
           ) : (
-            <div className="w-full h-full flex items-center justify-center text-4xl">📖</div>
+            <div className="w-full h-full flex items-center justify-center p-3">
+              <CopertinaPlaceholder />
+            </div>
           )}
         </div>
         <div className="flex-1 min-w-0">
-          <h1 className="text-xl font-semibold leading-tight">{libro.titolo}</h1>
+          <h1 className="font-serif text-xl font-semibold leading-tight">{libro.titolo}</h1>
           {libro.sottotitolo && <p className="text-muted text-sm">{libro.sottotitolo}</p>}
           {libro.autori.length > 0 && (
             <p className="text-muted mt-1">{libro.autori.join(", ")}</p>
@@ -83,7 +93,7 @@ export default function DettaglioClient({ voce: iniziale }: { voce: VoceLibreria
                 onClick={() => aggiorna({ stato })}
                 className={`text-sm px-3 py-1.5 rounded-full transition-colors ${
                   voce.stato === stato
-                    ? "bg-accent text-[#14110f] font-medium"
+                    ? "bg-accent text-accent-contrast font-medium"
                     : "bg-surface-2 hover:bg-border"
                 }`}
               >
@@ -92,6 +102,38 @@ export default function DettaglioClient({ voce: iniziale }: { voce: VoceLibreria
             ))}
           </div>
         </div>
+
+        {voce.stato === "in_lettura" && (
+          <div>
+            <label className="text-sm text-muted block mb-1.5">Segnalibro: a che pagina sei?</label>
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                min={0}
+                max={libro.pagine ?? undefined}
+                value={paginaCorrente}
+                onChange={(e) => setPaginaCorrente(e.target.value)}
+                onBlur={() =>
+                  aggiorna({
+                    pagina_corrente: paginaCorrente === "" ? null : parseInt(paginaCorrente, 10),
+                  })
+                }
+                placeholder="0"
+                className="w-24 bg-surface-2 border border-border rounded-lg px-3 py-1.5 text-sm outline-none focus:border-accent transition-colors"
+              />
+              {libro.pagine && <span className="text-sm text-muted">di {libro.pagine} pagine</span>}
+            </div>
+            {percentoLetto !== null && (
+              <div className="mt-2.5">
+                <div className="flex items-center justify-between text-xs text-muted mb-1">
+                  <span>Progresso</span>
+                  <span>{Math.round(percentoLetto)}%</span>
+                </div>
+                <BarraProgresso percento={percentoLetto} />
+              </div>
+            )}
+          </div>
+        )}
 
         <div>
           <label className="text-sm text-muted block mb-1.5">La tua valutazione</label>

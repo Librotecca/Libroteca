@@ -1,6 +1,7 @@
 import Image from "next/image";
 import type { ReactNode } from "react";
 import type { Libro } from "@/types";
+import CopertinaPlaceholder from "@/components/CopertinaPlaceholder";
 
 export default function BookCard({
   libro,
@@ -24,12 +25,14 @@ export default function BookCard({
             unoptimized
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-2xl">📖</div>
+          <div className="w-full h-full flex items-center justify-center p-2">
+            <CopertinaPlaceholder />
+          </div>
         )}
       </div>
 
       <div className="flex-1 min-w-0">
-        <h3 className="font-medium leading-tight line-clamp-2">{libro.titolo}</h3>
+        <h3 className="font-serif font-medium leading-tight line-clamp-2">{libro.titolo}</h3>
         {libro.autori.length > 0 && (
           <p className="text-sm text-muted mt-0.5">{libro.autori.join(", ")}</p>
         )}

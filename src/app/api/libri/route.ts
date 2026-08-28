@@ -97,6 +97,7 @@ export async function PATCH(request: NextRequest) {
     note?: string | null;
     data_inizio?: string | null;
     data_fine?: string | null;
+    pagina_corrente?: number | null;
   };
 
   if (!body.id) {
@@ -104,7 +105,14 @@ export async function PATCH(request: NextRequest) {
   }
 
   const aggiornamenti: Record<string, unknown> = {};
-  for (const campo of ["stato", "valutazione", "note", "data_inizio", "data_fine"] as const) {
+  for (const campo of [
+    "stato",
+    "valutazione",
+    "note",
+    "data_inizio",
+    "data_fine",
+    "pagina_corrente",
+  ] as const) {
     if (campo in body) aggiornamenti[campo] = body[campo];
   }
 

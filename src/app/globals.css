@@ -12,6 +12,9 @@
   --accent-contrast: #ffffff;
   --border: #e4d6c8;
   --danger: #c1443a;
+  --success: #4f7a43;
+  --success-strong: #3a5a31;
+  --success-contrast: #ffffff;
 }
 
 /* Tema scuro: applicato se l'utente lo sceglie esplicitamente... */
@@ -26,6 +29,9 @@
   --accent-contrast: #1f1023;
   --border: #3d2a44;
   --danger: #e2685c;
+  --success: #8fbf7a;
+  --success-strong: #a8d494;
+  --success-contrast: #14200f;
 }
 
 /* ...oppure di default se il sistema è impostato su scuro e l'utente non ha scelto "chiaro". */
@@ -41,6 +47,9 @@
     --accent-contrast: #1f1023;
     --border: #3d2a44;
     --danger: #e2685c;
+    --success: #8fbf7a;
+    --success-strong: #a8d494;
+    --success-contrast: #14200f;
   }
 }
 
@@ -55,9 +64,13 @@
   --color-accent-contrast: var(--accent-contrast);
   --color-border: var(--border);
   --color-danger: var(--danger);
+  --color-success: var(--success);
+  --color-success-strong: var(--success-strong);
+  --color-success-contrast: var(--success-contrast);
   --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial,
     sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --font-serif: "Lora", Georgia, "Times New Roman", serif;
 }
 
 body {

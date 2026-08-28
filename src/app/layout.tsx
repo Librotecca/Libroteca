@@ -1,4 +1,9 @@
 import type { Metadata, Viewport } from "next";
+// Font "Lora" per i titoli dei libri, self-hosted via @fontsource (nessuna
+// richiesta a fonts.googleapis.com: i file dei caratteri sono nel bundle).
+import "@fontsource/lora/400.css";
+import "@fontsource/lora/500.css";
+import "@fontsource/lora/600.css";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
 import ThemeScript from "@/components/ThemeScript";
@@ -32,7 +37,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <RegistraServiceWorker />
         <BannerOffline />
         <Navbar />
-        <main className="flex-1 w-full max-w-5xl mx-auto px-4 py-6 sm:px-6">{children}</main>
+        <main className="flex-1 w-full max-w-5xl mx-auto px-4 py-6 pb-24 sm:px-6 sm:pb-6">
+          {children}
+        </main>
       </body>
     </html>
   );

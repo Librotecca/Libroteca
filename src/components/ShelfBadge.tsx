@@ -3,7 +3,7 @@ import { ETICHETTE_STATO, type StatoLettura } from "@/types";
 const COLORI: Record<StatoLettura, string> = {
   da_leggere: "bg-surface-2 text-muted",
   in_lettura: "bg-accent/20 text-accent-strong",
-  letto: "bg-emerald-900/40 text-emerald-300",
+  letto: "bg-success/20 text-success-strong",
   abbandonato: "bg-danger/20 text-danger",
 };
 

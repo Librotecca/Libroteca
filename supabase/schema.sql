@@ -38,6 +38,7 @@ create table if not exists public.voci_libreria (
   note text,
   data_inizio date,
   data_fine date,
+  pagina_corrente int check (pagina_corrente >= 0),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   unique (user_id, libro_id)
@@ -112,6 +113,7 @@ create table if not exists public.profili (
   user_id uuid primary key references auth.users(id) on delete cascade,
   email text,
   nome_visualizzato text,
+  obiettivo_lettura_annuale int check (obiettivo_lettura_annuale >= 0),
   created_at timestamptz not null default now()
 );
 
@@ -258,3 +260,14 @@ create policy "consigli_feedback: solo proprie righe"
   to authenticated
   using (auth.uid() = user_id)
   with check (auth.uid() = user_id);
+
+-- ============================================================
+-- MIGRAZIONE: "pagina segnalibro" (progresso di lettura) + obiettivo annuale.
+-- Se il progetto Supabase esiste già da prima, esegui solo questo blocco
+-- (le "create table" sopra non toccano le tabelle già create).
+-- ============================================================
+alter table public.voci_libreria
+  add column if not exists pagina_corrente int check (pagina_corrente >= 0);
+
+alter table public.profili
+  add column if not exists obiettivo_lettura_annuale int check (obiettivo_lettura_annuale >= 0);

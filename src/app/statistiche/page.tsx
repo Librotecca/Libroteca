@@ -1,5 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import HeroBand from "@/components/HeroBand";
+import ObiettivoAnnuale from "@/components/ObiettivoAnnuale";
 import type { VoceLibreria } from "@/types";
 
 interface Conteggio {
@@ -22,11 +24,24 @@ function contaTop(voci: VoceLibreria[], campo: "categorie" | "autori", max: numb
     .slice(0, max);
 }
 
-function BarraLista({ dati, colore = "accent" }: { dati: Conteggio[]; colore?: "accent" | "muted" }) {
+const COLORI_BARRA = {
+  accent: "bg-accent",
+  muted: "bg-muted",
+  success: "bg-success",
+  danger: "bg-danger",
+} as const;
+
+function BarraLista({
+  dati,
+  colore = "accent",
+}: {
+  dati: (Conteggio & { colore?: keyof typeof COLORI_BARRA })[];
+  colore?: keyof typeof COLORI_BARRA;
+}) {
   if (dati.length === 0) {
     return <p className="text-muted text-sm">Non ci sono ancora abbastanza dati.</p>;
   }
-  const massimo = dati[0].conteggio;
+  const massimo = Math.max(...dati.map((d) => d.conteggio), 1);
   return (
     <div className="flex flex-col gap-2">
       {dati.map((d) => (
@@ -37,7 +52,7 @@ function BarraLista({ dati, colore = "accent" }: { dati: Conteggio[]; colore?: "
           </div>
           <div className="h-2 rounded-full bg-surface-2 overflow-hidden">
             <div
-              className={`h-full rounded-full ${colore === "accent" ? "bg-accent" : "bg-muted"}`}
+              className={`h-full rounded-full ${COLORI_BARRA[d.colore ?? colore]}`}
               style={{ width: `${Math.max(6, (d.conteggio / massimo) * 100)}%` }}
             />
           </div>
@@ -54,10 +69,14 @@ export default async function StatistichePage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data, error } = await supabase
-    .from("voci_libreria")
-    .select("*, libro:libri(*)")
-    .eq("user_id", user.id);
+  const [{ data, error }, { data: profilo }] = await Promise.all([
+    supabase.from("voci_libreria").select("*, libro:libri(*)").eq("user_id", user.id),
+    supabase
+      .from("profili")
+      .select("obiettivo_lettura_annuale")
+      .eq("user_id", user.id)
+      .maybeSingle(),
+  ]);
 
   if (error) {
     console.error("Errore caricamento statistiche:", error);
@@ -86,11 +105,11 @@ export default async function StatistichePage() {
   const topGeneri = contaTop(letti, "categorie", 5);
   const topAutori = contaTop(letti, "autori", 5);
 
-  const conteggioPerStato: { etichetta: string; conteggio: number }[] = [
-    { etichetta: "Letti", conteggio: letti.length },
-    { etichetta: "In lettura", conteggio: inLettura.length },
-    { etichetta: "Da leggere", conteggio: daLeggere.length },
-    { etichetta: "Abbandonati", conteggio: abbandonati.length },
+  const conteggioPerStato: { etichetta: string; conteggio: number; colore: "success" | "accent" | "muted" | "danger" }[] = [
+    { etichetta: "Letti", conteggio: letti.length, colore: "success" },
+    { etichetta: "In lettura", conteggio: inLettura.length, colore: "accent" },
+    { etichetta: "Da leggere", conteggio: daLeggere.length, colore: "muted" },
+    { etichetta: "Abbandonati", conteggio: abbandonati.length, colore: "danger" },
   ];
 
   const tessere: { etichetta: string; valore: string }[] = [
@@ -102,12 +121,13 @@ export default async function StatistichePage() {
 
   return (
     <div className="flex flex-col gap-8">
-      <div>
-        <h1 className="text-xl font-semibold">Le tue statistiche</h1>
-        <p className="text-muted text-sm mt-1">
-          Un riepilogo di come e cosa hai letto finora.
-        </p>
-      </div>
+      <HeroBand titolo="Le tue statistiche" sottotitolo="Un riepilogo di come e cosa hai letto finora.">
+        <ObiettivoAnnuale
+          anno={annoCorrente}
+          lettiQuestAnno={lettiQuestAnno}
+          obiettivoIniziale={profilo?.obiettivo_lettura_annuale ?? null}
+        />
+      </HeroBand>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {tessere.map((t) => (
@@ -124,8 +144,11 @@ export default async function StatistichePage() {
       <div className="bg-surface border border-border rounded-lg p-4">
         <h2 className="font-medium text-sm mb-3">Libri per stato</h2>
         <BarraLista
-          dati={conteggioPerStato.map((c) => ({ nome: c.etichetta, conteggio: c.conteggio }))}
-          colore="muted"
+          dati={conteggioPerStato.map((c) => ({
+            nome: c.etichetta,
+            conteggio: c.conteggio,
+            colore: c.colore,
+          }))}
         />
       </div>
 

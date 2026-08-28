@@ -26,6 +26,7 @@ export interface VoceLibreria {
   note: string | null;
   data_inizio: string | null;
   data_fine: string | null;
+  pagina_corrente: number | null;
   created_at: string;
   updated_at: string;
   libro?: Libro;
@@ -51,6 +52,7 @@ export interface Profilo {
   user_id: string;
   email: string | null;
   nome_visualizzato: string | null;
+  obiettivo_lettura_annuale?: number | null;
 }
 
 export interface Famiglia {
