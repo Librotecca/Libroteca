@@ -66,12 +66,14 @@ export async function cercaLibri(
     maxResults = 30,
     timeoutMs = 6000,
     langRestrict,
-  }: { maxResults?: number; timeoutMs?: number; langRestrict?: string } = {}
+    startIndex,
+  }: { maxResults?: number; timeoutMs?: number; langRestrict?: string; startIndex?: number } = {}
 ): Promise<Libro[]> {
   if (!query.trim()) return [];
 
   const restrizioneLingua = langRestrict ? `&langRestrict=${langRestrict}` : "";
-  const url = `${BASE_URL}?q=${encodeURIComponent(query)}&maxResults=${maxResults}${restrizioneLingua}${apiKeyParam()}`;
+  const indicePartenza = startIndex ? `&startIndex=${startIndex}` : "";
+  const url = `${BASE_URL}?q=${encodeURIComponent(query)}&maxResults=${maxResults}${restrizioneLingua}${indicePartenza}${apiKeyParam()}`;
 
   const res = await fetch(url, { next: { revalidate: 3600 }, signal: AbortSignal.timeout(timeoutMs) });
   if (!res.ok) {

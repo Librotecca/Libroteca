@@ -7,8 +7,11 @@ import ScannerISBN from "@/components/ScannerISBN";
 import type { Libro, StatoLettura } from "@/types";
 import { ETICHETTE_STATO } from "@/types";
 
+type TipoRicerca = "titolo" | "autore";
+
 export default function CercaPage() {
   const [query, setQuery] = useState("");
+  const [modalita, setModalita] = useState<TipoRicerca>("titolo");
   const [risultati, setRisultati] = useState<Libro[]>([]);
   const [caricamento, setCaricamento] = useState(false);
   const [errore, setErrore] = useState<string | null>(null);
@@ -16,8 +19,9 @@ export default function CercaPage() {
   const [scannerAperto, setScannerAperto] = useState(false);
   const [libroSelezionato, setLibroSelezionato] = useState<Libro | null>(null);
 
-  async function cercaSulServer(testo: string): Promise<Libro[]> {
-    const res = await fetch(`/api/cerca-libri?q=${encodeURIComponent(testo)}`);
+  async function cercaSulServer(testo: string, tipo: TipoRicerca): Promise<Libro[]> {
+    const parametroTipo = tipo === "autore" ? "&tipo=autore" : "";
+    const res = await fetch(`/api/cerca-libri?q=${encodeURIComponent(testo)}${parametroTipo}`);
     const data = await res.json();
     if (!res.ok) throw new Error(data.errore ?? "Errore di ricerca");
     return data.risultati as Libro[];
@@ -36,30 +40,33 @@ export default function CercaPage() {
   // traffico di "liberarsi") prima di mostrare davvero "nessun risultato".
   const PAUSE_TENTATIVI_MS = [0, 700, 1400];
 
-  async function cercaConRitentativi(testo: string): Promise<Libro[]> {
+  async function cercaConRitentativi(testo: string, tipo: TipoRicerca): Promise<Libro[]> {
     let risultati: Libro[] = [];
     for (const pausa of PAUSE_TENTATIVI_MS) {
       if (pausa > 0) await attesa(pausa);
-      risultati = await cercaSulServer(testo).catch(() => []);
+      risultati = await cercaSulServer(testo, tipo).catch(() => []);
       if (risultati.length > 0) break;
     }
     return risultati;
   }
 
-  async function eseguiRicerca(testo: string) {
+  async function eseguiRicerca(testo: string, tipoForzato?: TipoRicerca) {
     if (!testo.trim()) return;
+    const tipo = tipoForzato ?? modalita;
     setCaricamento(true);
     setErrore(null);
 
     try {
-      const risultatiTrovati = await cercaConRitentativi(testo);
+      const risultatiTrovati = await cercaConRitentativi(testo, tipo);
 
       setRisultati(risultatiTrovati);
       if (risultatiTrovati.length === 0) {
         setErrore(
           testo.toLowerCase().startsWith("isbn:")
             ? "Nessun libro trovato con questo codice. Prova con la ricerca per titolo."
-            : "Nessun libro trovato. Prova con altre parole o riprova tra poco."
+            : tipo === "autore"
+              ? "Nessun libro trovato per questo autore. Controlla come hai scritto il nome."
+              : "Nessun libro trovato. Prova con altre parole o riprova tra poco."
         );
       }
     } catch (err) {
@@ -77,17 +84,21 @@ export default function CercaPage() {
   function codiceRilevato(codice: string) {
     // Ripulisce il codice letto dalla fotocamera da eventuali spazi/trattini,
     // così la ricerca ISBN riceve sempre solo cifre (e l'eventuale "X" finale).
+    // Uno scan è sempre una ricerca per titolo/codice, indipendentemente dalla
+    // modalità selezionata a mano.
     const codicePulito = codice.replace(/[^0-9Xx]/g, "");
     setScannerAperto(false);
+    setModalita("titolo");
     setQuery(codicePulito);
-    eseguiRicerca(`isbn:${codicePulito}`);
+    eseguiRicerca(`isbn:${codicePulito}`, "titolo");
   }
 
   function copertinaRilevata(titolo: string, autore: string | null) {
     const testo = autore ? `${titolo} ${autore}` : titolo;
     setScannerAperto(false);
+    setModalita("titolo");
     setQuery(testo);
-    eseguiRicerca(testo);
+    eseguiRicerca(testo, "titolo");
   }
 
   async function aggiungi(libro: Libro, stato: StatoLettura) {
@@ -106,9 +117,31 @@ export default function CercaPage() {
       <div>
         <h1 className="text-xl font-semibold">Cerca un libro</h1>
         <p className="text-muted text-sm mt-1">
-          Cerca nel catalogo Google Books + Open Library (con priorità ai libri in italiano) e
-          aggiungi alla tua libreria.
+          {modalita === "autore"
+            ? "Trova tutti i libri di un autore, e solo di quell'autore."
+            : "Cerca nel catalogo Google Books + Open Library (con priorità ai libri in italiano) e aggiungi alla tua libreria."}
         </p>
+      </div>
+
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={() => setModalita("titolo")}
+          className={`text-sm px-3 py-1.5 rounded-full transition-colors ${
+            modalita === "titolo" ? "bg-accent text-accent-contrast" : "bg-surface-2 hover:bg-border"
+          }`}
+        >
+          Per titolo
+        </button>
+        <button
+          type="button"
+          onClick={() => setModalita("autore")}
+          className={`text-sm px-3 py-1.5 rounded-full transition-colors ${
+            modalita === "autore" ? "bg-accent text-accent-contrast" : "bg-surface-2 hover:bg-border"
+          }`}
+        >
+          Per autore
+        </button>
       </div>
 
       <div className="flex gap-2 min-w-0">
@@ -117,7 +150,7 @@ export default function CercaPage() {
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Titolo, autore..."
+            placeholder={modalita === "autore" ? "Nome e cognome dell'autore..." : "Titolo, autore..."}
             className="flex-1 min-w-0 bg-surface border border-border rounded-lg px-4 py-2.5 outline-none focus:border-accent transition-colors"
           />
           <button

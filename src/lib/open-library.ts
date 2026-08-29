@@ -89,6 +89,38 @@ export async function cercaLibriOpenLibrary(
 }
 
 /**
+ * Cerca tutti i libri di un autore su Open Library, usando il parametro
+ * dedicato "author" (più mirato della ricerca a testo libero "q=...", che
+ * mescolerebbe anche libri che citano l'autore senza esserne scritti da lui).
+ */
+export async function cercaLibriOpenLibraryPerAutore(
+  autore: string,
+  maxResults = 60,
+  timeoutMs = 6000
+): Promise<Libro[]> {
+  if (!autore.trim()) return [];
+
+  const params = new URLSearchParams({
+    author: autore,
+    limit: String(maxResults),
+    fields: "key,title,author_name,first_publish_year,isbn,publisher,subject,language,cover_i",
+  });
+
+  try {
+    const res = await fetch(`${BASE_URL}?${params.toString()}`, {
+      next: { revalidate: 3600 },
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+    if (!res.ok) return [];
+    const data = (await res.json()) as { docs?: OpenLibraryDoc[] };
+    return (data.docs ?? []).filter((doc) => doc.title).map(mappaDoc);
+  } catch (err) {
+    console.error("Errore ricerca autore Open Library:", err);
+    return [];
+  }
+}
+
+/**
  * Cerca un libro per ISBN esatto usando l'endpoint dedicato di Open Library
  * (molto più affidabile della ricerca generica "q=isbn:..." per un match preciso,
  * specie per edizioni italiane meno diffuse che la ricerca a testo libero non trova).

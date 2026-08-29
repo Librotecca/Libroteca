@@ -1,15 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
-import { cercaLibriCompleto, cercaLibroPerISBN } from "@/lib/catalogo";
+import { cercaLibriCompleto, cercaLibriPerAutoreCompleto, cercaLibroPerISBN } from "@/lib/catalogo";
 
 export async function GET(request: NextRequest) {
   const q = request.nextUrl.searchParams.get("q") ?? "";
   const soloItaliano = request.nextUrl.searchParams.get("soloItaliano") !== "false";
+  const perAutore = request.nextUrl.searchParams.get("tipo") === "autore";
 
   if (!q.trim()) {
     return NextResponse.json({ risultati: [] });
   }
 
   try {
+    if (perAutore) {
+      const risultati = await cercaLibriPerAutoreCompleto(q);
+      return NextResponse.json({ risultati });
+    }
+
     if (q.toLowerCase().startsWith("isbn:")) {
       const isbn = q.slice(5);
       const libro = await cercaLibroPerISBN(isbn);

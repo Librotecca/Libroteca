@@ -1,9 +1,30 @@
 import type { Libro } from "@/types";
 import { cercaLibri as cercaLibriGoogle, trovaLibroPerTitoloAutore as trovaSuGoogle } from "@/lib/google-books";
-import { cercaLibriOpenLibrary, trovaLibroPerISBNOpenLibrary } from "@/lib/open-library";
+import {
+  cercaLibriOpenLibrary,
+  cercaLibriOpenLibraryPerAutore,
+  trovaLibroPerISBNOpenLibrary,
+} from "@/lib/open-library";
 
 function chiaveDedupe(l: Libro): string {
   return `${l.titolo.toLowerCase().trim()}|${(l.autori[0] ?? "").toLowerCase().trim()}`;
+}
+
+/**
+ * Verifica se uno degli autori del libro corrisponde davvero al nome cercato
+ * (in un senso o nell'altro, per tollerare nome+cognome invertiti o un nome
+ * parziale) — serve a scartare i risultati che una ricerca per autore su
+ * Google Books/Open Library a volte restituisce comunque anche se l'autore
+ * non è esattamente quello (es. libri che lo citano, antologie curate da
+ * altri, o semplici corrispondenze di rilevanza generica).
+ */
+function autoreCorrisponde(autoriLibro: string[], nomeCercato: string): boolean {
+  const cercato = nomeCercato.toLowerCase().trim();
+  if (!cercato) return false;
+  return autoriLibro.some((autore) => {
+    const a = autore.toLowerCase().trim();
+    return a === cercato || a.includes(cercato) || cercato.includes(a);
+  });
 }
 
 /**
@@ -68,6 +89,46 @@ export async function cercaLibriCompleto(
 
   const ordinati = soloItaliano ? italianiPrima(uniti) : uniti;
   return ordinati.slice(0, maxResults);
+}
+
+/**
+ * Cerca TUTTI i libri di un autore (e solo di quell'autore), per chi vuole
+ * sfogliare l'intera bibliografia invece di cercare titolo per titolo.
+ * A differenza di cercaLibriCompleto, qui la completezza conta più della
+ * velocità: interroga sempre entrambe le fonti in parallelo (Google Books su
+ * due pagine, per superare il limite di 40 risultati per chiamata, più Open
+ * Library con il suo parametro "author" dedicato), poi filtra via tutto ciò
+ * che non è davvero attribuito a quell'autore — perché "inauthor:" e
+ * "author=" sono un aiuto alla ricerca, non un filtro esatto, e da soli
+ * lascerebbero passare anche libri di altri autori solo abbastanza rilevanti.
+ */
+export async function cercaLibriPerAutoreCompleto(
+  autore: string,
+  { maxResults = 60 }: { maxResults?: number } = {}
+): Promise<Libro[]> {
+  if (!autore.trim()) return [];
+
+  const [paginaUno, paginaDue, openLibrary] = await Promise.all([
+    cercaLibriGoogle(`inauthor:${autore}`, { maxResults: 40, timeoutMs: 6000 }).catch(
+      () => [] as Libro[]
+    ),
+    cercaLibriGoogle(`inauthor:${autore}`, { maxResults: 40, timeoutMs: 6000, startIndex: 40 }).catch(
+      () => [] as Libro[]
+    ),
+    cercaLibriOpenLibraryPerAutore(autore, 60, 6000).catch(() => [] as Libro[]),
+  ]);
+
+  const visti = new Set<string>();
+  const uniti: Libro[] = [];
+  for (const libro of [...paginaUno, ...paginaDue, ...openLibrary]) {
+    const chiave = chiaveDedupe(libro);
+    if (visti.has(chiave)) continue;
+    visti.add(chiave);
+    uniti.push(libro);
+  }
+
+  const soloDiQuestoAutore = uniti.filter((l) => autoreCorrisponde(l.autori, autore));
+  return italianiPrima(soloDiQuestoAutore).slice(0, maxResults);
 }
 
 /**
