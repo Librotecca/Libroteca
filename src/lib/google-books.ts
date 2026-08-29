@@ -50,18 +50,28 @@ function apiKeyParam(): string {
 }
 
 /**
- * Cerca libri su Google Books. La ricerca non è ristretta per lingua (per avere
- * un catalogo il più ampio possibile): la priorità ai titoli in italiano viene
- * data più avanti, ordinando i risultati uniti di tutte le fonti. Ha un limite
- * di tempo (timeoutMs) per non far aspettare troppo chi cerca da rete lenta.
+ * Cerca libri su Google Books. Di norma la ricerca non è ristretta per lingua
+ * (per avere un catalogo il più ampio possibile): la priorità ai titoli in
+ * italiano viene data più avanti, ordinando i risultati uniti di tutte le
+ * fonti. Se si passa langRestrict, invece, Google Books filtra i risultati
+ * per lingua del contenuto (non solo un'etichetta): usato per recuperare
+ * edizioni italiane vere e proprie — con il titolo stesso in italiano — anche
+ * quando la ricerca generica restituisce solo edizioni in altre lingue. Ha un
+ * limite di tempo (timeoutMs) per non far aspettare troppo chi cerca da rete
+ * lenta.
  */
 export async function cercaLibri(
   query: string,
-  { maxResults = 30, timeoutMs = 6000 }: { maxResults?: number; timeoutMs?: number } = {}
+  {
+    maxResults = 30,
+    timeoutMs = 6000,
+    langRestrict,
+  }: { maxResults?: number; timeoutMs?: number; langRestrict?: string } = {}
 ): Promise<Libro[]> {
   if (!query.trim()) return [];
 
-  const url = `${BASE_URL}?q=${encodeURIComponent(query)}&maxResults=${maxResults}${apiKeyParam()}`;
+  const restrizioneLingua = langRestrict ? `&langRestrict=${langRestrict}` : "";
+  const url = `${BASE_URL}?q=${encodeURIComponent(query)}&maxResults=${maxResults}${restrizioneLingua}${apiKeyParam()}`;
 
   const res = await fetch(url, { next: { revalidate: 3600 }, signal: AbortSignal.timeout(timeoutMs) });
   if (!res.ok) {

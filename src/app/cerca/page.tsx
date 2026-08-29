@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import BookCard from "@/components/BookCard";
+import ModaleLibro from "@/components/ModaleLibro";
 import ScannerISBN from "@/components/ScannerISBN";
 import type { Libro, StatoLettura } from "@/types";
 import { ETICHETTE_STATO } from "@/types";
@@ -13,6 +14,7 @@ export default function CercaPage() {
   const [errore, setErrore] = useState<string | null>(null);
   const [aggiunti, setAggiunti] = useState<Record<string, StatoLettura>>({});
   const [scannerAperto, setScannerAperto] = useState(false);
+  const [libroSelezionato, setLibroSelezionato] = useState<Libro | null>(null);
 
   async function cercaSulServer(testo: string): Promise<Libro[]> {
     const res = await fetch(`/api/cerca-libri?q=${encodeURIComponent(testo)}`);
@@ -21,20 +23,36 @@ export default function CercaPage() {
     return data.risultati as Libro[];
   }
 
+  async function attesa(ms: number) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  // Senza una API key di Google Books configurata, le richieste condividono
+  // un limite di traffico pubblico con moltissime altre app: capita che una
+  // singola richiesta venga rifiutata o rallentata anche se il libro esiste
+  // davvero (da qui il "non lo trova, riprovo e lo trova"). Per non far
+  // ripetere la ricerca a mano, ne facciamo fino a 3 in automatico, con una
+  // breve pausa crescente tra un tentativo e l'altro (dà tempo al limite di
+  // traffico di "liberarsi") prima di mostrare davvero "nessun risultato".
+  const PAUSE_TENTATIVI_MS = [0, 700, 1400];
+
+  async function cercaConRitentativi(testo: string): Promise<Libro[]> {
+    let risultati: Libro[] = [];
+    for (const pausa of PAUSE_TENTATIVI_MS) {
+      if (pausa > 0) await attesa(pausa);
+      risultati = await cercaSulServer(testo).catch(() => []);
+      if (risultati.length > 0) break;
+    }
+    return risultati;
+  }
+
   async function eseguiRicerca(testo: string) {
     if (!testo.trim()) return;
     setCaricamento(true);
     setErrore(null);
 
     try {
-      let risultatiTrovati = await cercaSulServer(testo);
-      // Google Books/Open Library a volte hanno un intoppo momentaneo su una
-      // singola richiesta (rete, timeout): un solo nuovo tentativo silenzioso
-      // evita di mostrare "nessun risultato" per un problema passeggero, prima
-      // di arrendersi davvero.
-      if (risultatiTrovati.length === 0) {
-        risultatiTrovati = await cercaSulServer(testo).catch(() => []);
-      }
+      const risultatiTrovati = await cercaConRitentativi(testo);
 
       setRisultati(risultatiTrovati);
       if (risultatiTrovati.length === 0) {
@@ -132,27 +150,31 @@ export default function CercaPage() {
 
       <div className="flex flex-col gap-3">
         {risultati.map((libro) => (
-          <BookCard key={libro.id} libro={libro}>
-            {aggiunti[libro.id] ? (
-              <span className="text-sm text-accent-strong">
-                ✓ Aggiunto come &ldquo;{ETICHETTE_STATO[aggiunti[libro.id]]}&rdquo;
-              </span>
-            ) : (
-              <div className="flex flex-wrap gap-2">
-                {(Object.keys(ETICHETTE_STATO) as StatoLettura[]).map((stato) => (
-                  <button
-                    key={stato}
-                    onClick={() => aggiungi(libro, stato)}
-                    className="text-xs px-2.5 py-1 rounded-full bg-surface-2 hover:bg-border transition-colors"
-                  >
-                    + {ETICHETTE_STATO[stato]}
-                  </button>
-                ))}
-              </div>
-            )}
-          </BookCard>
+          <button
+            key={libro.id}
+            type="button"
+            onClick={() => setLibroSelezionato(libro)}
+            className="text-left w-full"
+          >
+            <BookCard libro={libro}>
+              {aggiunti[libro.id] && (
+                <span className="text-sm text-accent-strong">
+                  ✓ Aggiunto come &ldquo;{ETICHETTE_STATO[aggiunti[libro.id]]}&rdquo;
+                </span>
+              )}
+            </BookCard>
+          </button>
         ))}
       </div>
+
+      {libroSelezionato && (
+        <ModaleLibro
+          libro={libroSelezionato}
+          statoAttuale={aggiunti[libroSelezionato.id] ?? null}
+          onAggiungi={(stato) => aggiungi(libroSelezionato, stato)}
+          onChiudi={() => setLibroSelezionato(null)}
+        />
+      )}
     </div>
   );
 }

@@ -23,10 +23,17 @@ function italianiPrima(libri: Libro[]): Libro[] {
  * edizioni italiane meno diffuse). I duplicati (stesso titolo+autore) vengono
  * rimossi, dando priorità a Google Books.
  *
+ * Per avere titoli davvero in italiano (non solo etichettati come tali) viene
+ * lanciata anche una seconda ricerca su Google Books con langRestrict=it, che
+ * filtra per lingua del contenuto: recupera edizioni italiane vere e proprie
+ * che la ricerca generica potrebbe non mostrare (perché Google la ordina per
+ * rilevanza generale, non per lingua). Le due chiamate a Google Books vanno in
+ * parallelo, quindi non aggiungono attesa percepita.
+ *
  * Per la velocità: Open Library viene interrogata solo se Google Books da
  * solo non basta (poche corrispondenze). Nella maggior parte delle ricerche
  * (titoli noti) Google trova già abbastanza risultati, quindi la ricerca resta
- * una sola chiamata di rete invece di due sempre in parallelo — Open Library
+ * una sola tornata di chiamate invece di tre sempre in sequenza — Open Library
  * è infatti spesso molto più lenta di Google Books, ed era la causa principale
  * della lentezza percepita premendo "Cerca". Quando serve comunque (titoli
  * meno comuni), ha un limite di tempo più stretto così non trascina troppo
@@ -36,18 +43,28 @@ export async function cercaLibriCompleto(
   query: string,
   { soloItaliano = true, maxResults = 30 }: { soloItaliano?: boolean; maxResults?: number } = {}
 ): Promise<Libro[]> {
-  const google = await cercaLibriGoogle(query, { maxResults: 30, timeoutMs: 5000 }).catch(
-    () => [] as Libro[]
-  );
+  const [google, googleItaliano] = await Promise.all([
+    cercaLibriGoogle(query, { maxResults: 30, timeoutMs: 5000 }).catch(() => [] as Libro[]),
+    soloItaliano
+      ? cercaLibriGoogle(query, { maxResults: 20, timeoutMs: 5000, langRestrict: "it" }).catch(
+          () => [] as Libro[]
+        )
+      : Promise.resolve([] as Libro[]),
+  ]);
 
-  const bastaGoogle = google.length >= 8;
+  // Le edizioni italiane vere (langRestrict=it) vanno messe davanti a quelle
+  // generiche già in fase di unione, prima ancora dell'ordinamento finale.
+  const vistiItaliani = new Set(googleItaliano.map(chiaveDedupe));
+  const googleUnito = [...googleItaliano, ...google.filter((l) => !vistiItaliani.has(chiaveDedupe(l)))];
+
+  const bastaGoogle = googleUnito.length >= 8;
   const openLibrary = bastaGoogle
     ? []
     : await cercaLibriOpenLibrary(query, 24, 3500).catch(() => [] as Libro[]);
 
-  const visti = new Set(google.map(chiaveDedupe));
+  const visti = new Set(googleUnito.map(chiaveDedupe));
   const extra = openLibrary.filter((l) => !visti.has(chiaveDedupe(l)));
-  const uniti = [...google, ...extra];
+  const uniti = [...googleUnito, ...extra];
 
   const ordinati = soloItaliano ? italianiPrima(uniti) : uniti;
   return ordinati.slice(0, maxResults);
