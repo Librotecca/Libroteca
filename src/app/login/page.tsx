@@ -13,6 +13,8 @@ export default function LoginPage() {
 
   const [modalita, setModalita] = useState<Modalita>("password");
   const [azione, setAzione] = useState<AzionePassword>("accedi");
+  const [recupero, setRecupero] = useState(false);
+  const [recuperoInviato, setRecuperoInviato] = useState(false);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -88,6 +90,31 @@ export default function LoginPage() {
     }
   }
 
+  async function inviaRecupero(e: React.FormEvent) {
+    e.preventDefault();
+    setErrore(null);
+    setMessaggio(null);
+    setCaricamento(true);
+
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/auth/callback?next=/auth/reset-password`,
+    });
+
+    setCaricamento(false);
+    if (error) {
+      setErrore(error.message);
+    } else {
+      setRecuperoInviato(true);
+    }
+  }
+
+  function tornaAlLogin() {
+    setRecupero(false);
+    setRecuperoInviato(false);
+    setErrore(null);
+    setMessaggio(null);
+  }
+
   return (
     <div className="max-w-sm mx-auto mt-16 flex flex-col gap-6">
       <div className="text-center">
@@ -97,35 +124,82 @@ export default function LoginPage() {
         </p>
       </div>
 
-      <div className="flex gap-1 bg-surface-2 rounded-lg p-1 text-sm">
-        <button
-          onClick={() => {
-            setModalita("password");
-            setErrore(null);
-            setMessaggio(null);
-          }}
-          className={`flex-1 rounded-md py-1.5 transition-colors ${
-            modalita === "password" ? "bg-accent text-[#14110f] font-medium" : "text-muted"
-          }`}
-        >
-          Password
-        </button>
-        <button
-          onClick={() => {
-            setModalita("link");
-            setErrore(null);
-            setMessaggio(null);
-            setInviato(false);
-          }}
-          className={`flex-1 rounded-md py-1.5 transition-colors ${
-            modalita === "link" ? "bg-accent text-[#14110f] font-medium" : "text-muted"
-          }`}
-        >
-          Link via email
-        </button>
-      </div>
+      {!recupero && (
+        <div className="flex gap-1 bg-surface-2 rounded-lg p-1 text-sm">
+          <button
+            onClick={() => {
+              setModalita("password");
+              setErrore(null);
+              setMessaggio(null);
+            }}
+            className={`flex-1 rounded-md py-1.5 transition-colors ${
+              modalita === "password" ? "bg-accent text-[#14110f] font-medium" : "text-muted"
+            }`}
+          >
+            Password
+          </button>
+          <button
+            onClick={() => {
+              setModalita("link");
+              setErrore(null);
+              setMessaggio(null);
+              setInviato(false);
+            }}
+            className={`flex-1 rounded-md py-1.5 transition-colors ${
+              modalita === "link" ? "bg-accent text-[#14110f] font-medium" : "text-muted"
+            }`}
+          >
+            Link via email
+          </button>
+        </div>
+      )}
 
-      {modalita === "password" ? (
+      {recupero ? (
+        recuperoInviato ? (
+          <div className="flex flex-col gap-4">
+            <div className="bg-surface border border-border rounded-lg p-4 text-sm text-center">
+              Se esiste un account per <strong>{email}</strong>, ti abbiamo inviato un&apos;email
+              con le istruzioni per reimpostare la password.
+            </div>
+            <button
+              type="button"
+              onClick={tornaAlLogin}
+              className="text-sm text-muted hover:text-foreground text-center transition-colors"
+            >
+              Torna al login
+            </button>
+          </div>
+        ) : (
+          <form onSubmit={inviaRecupero} className="flex flex-col gap-3">
+            <p className="text-muted text-sm text-center">
+              Inserisci la tua email: ti manderemo un link per reimpostare la password.
+            </p>
+            <input
+              type="email"
+              required
+              placeholder="La tua email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="bg-surface border border-border rounded-lg px-4 py-2.5 outline-none focus:border-accent transition-colors"
+            />
+            <button
+              type="submit"
+              disabled={caricamento}
+              className="bg-accent hover:bg-accent-strong text-[#14110f] font-medium rounded-lg px-4 py-2.5 transition-colors disabled:opacity-60"
+            >
+              {caricamento ? "Invio in corso..." : "Inviami il link per reimpostare la password"}
+            </button>
+            <button
+              type="button"
+              onClick={tornaAlLogin}
+              className="text-sm text-muted hover:text-foreground text-center transition-colors"
+            >
+              Torna al login
+            </button>
+            {errore && <p className="text-danger text-sm text-center">{errore}</p>}
+          </form>
+        )
+      ) : modalita === "password" ? (
         <form onSubmit={inviaPassword} className="flex flex-col gap-3">
           <input
             type="email"
@@ -145,6 +219,21 @@ export default function LoginPage() {
             autoComplete={azione === "accedi" ? "current-password" : "new-password"}
             className="bg-surface border border-border rounded-lg px-4 py-2.5 outline-none focus:border-accent transition-colors"
           />
+
+          {azione === "accedi" && (
+            <button
+              type="button"
+              onClick={() => {
+                setRecupero(true);
+                setErrore(null);
+                setMessaggio(null);
+              }}
+              className="text-sm text-muted hover:text-foreground text-right -mt-1 transition-colors"
+            >
+              Password dimenticata?
+            </button>
+          )}
+
           <button
             type="submit"
             disabled={caricamento}
